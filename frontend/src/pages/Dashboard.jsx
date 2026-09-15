@@ -23,7 +23,10 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="welcome-actions">
-          <Link to="/profile" className="btn btn-primary">
+          <Link to="/career-analysis" className="btn btn-primary">
+            ⚡ Analyze My Career
+          </Link>
+          <Link to="/profile" className="btn btn-outline">
             Edit Full Profile
           </Link>
         </div>
@@ -80,13 +83,18 @@ export default function Dashboard() {
             {profile?.career_goal ? (
               <div className="career-goal-box">
                 <p className="goal-quote">&ldquo;{profile.career_goal}&rdquo;</p>
-                <span className="goal-status">Ready for AI Skill Gap Analysis</span>
+                <div className="goal-actions-row">
+                  <span className="goal-status">AI Readiness Analysis Ready</span>
+                  <Link to="/career-analysis" className="btn btn-primary btn-sm">
+                    Analyze My Career
+                  </Link>
+                </div>
               </div>
             ) : (
               <div className="empty-notice">
                 <p>Set a career goal to guide your AI learning roadmap.</p>
-                <Link to="/profile" className="btn btn-outline btn-sm">
-                  Set Career Goal
+                <Link to="/career-analysis" className="btn btn-primary btn-sm">
+                  Analyze My Career
                 </Link>
               </div>
             )}
@@ -168,8 +176,8 @@ export default function Dashboard() {
               <h4>Django Auth &amp; Profile API</h4>
               <p>Secure JWT session, AbstractUser, and Profile data store</p>
             </div>
-            <div className="agent-item upcoming">
-              <span className="agent-badge">Phase 2</span>
+            <div className="agent-item active">
+              <span className="agent-badge">Phase 2 (Active)</span>
               <h4>Supervisor &amp; Career Agent</h4>
               <p>LangGraph orchestration &amp; personalized career trajectory matching</p>
             </div>

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CareerProfile, Skill, UserSkill
+from .models import CareerAnalysis, CareerProfile, Skill, UserSkill
 
 
 class SkillSerializer(serializers.ModelSerializer):
@@ -90,3 +90,48 @@ class CareerProfileSerializer(serializers.ModelSerializer):
             'updated_at',
         ]
         read_only_fields = ['id', 'email', 'created_at', 'updated_at']
+
+
+class CareerAnalysisSerializer(serializers.ModelSerializer):
+    """
+    Serializer formatting stored CareerAnalysis instances matching the specified API schema.
+    """
+    career_goal = serializers.CharField(source='target_career_goal', read_only=True)
+    career_readiness = serializers.IntegerField(source='career_readiness_estimate', read_only=True)
+    recommended_paths = serializers.ListField(source='recommended_career_paths', child=serializers.CharField(), read_only=True)
+    strengths = serializers.ListField(child=serializers.CharField(), read_only=True)
+    weaknesses = serializers.ListField(child=serializers.CharField(), read_only=True)
+    analysis = serializers.CharField(source='reasoning', read_only=True)
+    next_actions = serializers.ListField(source='recommended_next_actions', child=serializers.CharField(), read_only=True)
+
+    class Meta:
+        model = CareerAnalysis
+        fields = [
+            'id',
+            'career_goal',
+            'career_readiness',
+            'recommended_paths',
+            'strengths',
+            'weaknesses',
+            'analysis',
+            'next_actions',
+            'current_education',
+            'current_skills',
+            'experience_level',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = fields
+
+
+class CareerAnalyzeRequestSerializer(serializers.Serializer):
+    """
+    Serializer validating incoming request payload for POST /api/v1/career/analyze/.
+    """
+    career_goal = serializers.CharField(
+        max_length=255,
+        required=False,
+        allow_blank=True,
+        help_text="Target career goal to evaluate against. If omitted, uses stored target role."
+    )
+

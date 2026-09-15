@@ -168,3 +168,77 @@ class CareerModuleTests(APITestCase):
         self.assertEqual(skills_dict['Python'], 'Advanced')
         self.assertEqual(skills_dict['PostgreSQL'], 'Intermediate')
         self.assertEqual(skills_dict['Docker'], 'Beginner')
+
+    def test_career_analysis_unauthenticated_denied(self):
+        """Verify career analysis endpoints require authentication."""
+        analyze_url = reverse('career:career-analyze')
+        analysis_url = reverse('career:career-analysis')
+
+        resp1 = self.client.post(analyze_url, {'career_goal': 'Full Stack Developer'})
+        self.assertEqual(resp1.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        resp2 = self.client.get(analysis_url)
+        self.assertEqual(resp2.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_career_analysis_generation_and_persistence(self):
+        """Authenticated user can generate and retrieve career analysis."""
+        self.client.force_authenticate(user=self.user1)
+
+        # Pre-assign skills to user1
+        UserSkill.objects.create(user=self.user1, skill=self.skill_python, level='Advanced')
+        UserSkill.objects.create(user=self.user1, skill=self.skill_django, level='Intermediate')
+
+        analyze_url = reverse('career:career-analyze')
+        payload = {'career_goal': 'Backend Engineer'}
+        post_resp = self.client.post(analyze_url, payload, format='json')
+
+        self.assertEqual(post_resp.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(post_resp.data['career_goal'], 'Backend Engineer')
+        self.assertIn('career_readiness', post_resp.data)
+        self.assertGreaterEqual(post_resp.data['career_readiness'], 0)
+        self.assertLessEqual(post_resp.data['career_readiness'], 100)
+        self.assertIsInstance(post_resp.data['recommended_paths'], list)
+        self.assertIsInstance(post_resp.data['strengths'], list)
+        self.assertIn('Python', post_resp.data['strengths'])
+        self.assertIsInstance(post_resp.data['weaknesses'], list)
+        self.assertIsInstance(post_resp.data['analysis'], str)
+        self.assertIsInstance(post_resp.data['next_actions'], list)
+
+        # Retrieve latest analysis via GET
+        analysis_url = reverse('career:career-analysis')
+        get_resp = self.client.get(analysis_url)
+        self.assertEqual(get_resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(get_resp.data['career_goal'], 'Backend Engineer')
+        self.assertEqual(get_resp.data['career_readiness'], post_resp.data['career_readiness'])
+
+        # Retrieve historical analyses
+        history_resp = self.client.get(analysis_url, {'all': 'true'})
+        self.assertEqual(history_resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(history_resp.data), 1)
+
+    def test_career_analysis_user_isolation(self):
+        """User A and User B have separate career analysis data."""
+        self.client.force_authenticate(user=self.user1)
+        analyze_url = reverse('career:career-analyze')
+        analysis_url = reverse('career:career-analysis')
+
+        # User 1 analyzes Full Stack Developer
+        self.client.post(analyze_url, {'career_goal': 'Full Stack Developer'}, format='json')
+
+        # User 2 checks analysis (should have none)
+        self.client.force_authenticate(user=self.user2)
+        user2_empty = self.client.get(analysis_url)
+        self.assertEqual(user2_empty.status_code, status.HTTP_404_NOT_FOUND)
+
+        # User 2 analyzes AI Researcher
+        user2_post = self.client.post(analyze_url, {'career_goal': 'AI Researcher'}, format='json')
+        self.assertEqual(user2_post.status_code, status.HTTP_201_CREATED)
+
+        user2_get = self.client.get(analysis_url)
+        self.assertEqual(user2_get.data['career_goal'], 'AI Researcher')
+
+        # Switch back to User 1 and verify User 1 still has Full Stack Developer
+        self.client.force_authenticate(user=self.user1)
+        user1_get = self.client.get(analysis_url)
+        self.assertEqual(user1_get.data['career_goal'], 'Full Stack Developer')
+

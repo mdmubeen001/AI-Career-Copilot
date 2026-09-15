@@ -3,6 +3,7 @@ import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicRoute from './components/PublicRoute';
 import { AuthProvider } from './context/AuthContext';
+import CareerAnalysis from './pages/CareerAnalysis';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
@@ -29,6 +30,7 @@ export default function App() {
               <Route element={<ProtectedRoute />}>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/career-analysis" element={<CareerAnalysis />} />
               </Route>
 
               {/* Catch-all fallback */}

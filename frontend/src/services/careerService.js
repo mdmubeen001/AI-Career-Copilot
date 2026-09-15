@@ -74,6 +74,30 @@ export const careerService = {
     const response = await api.post('/career/user-skills/sync/', { skills });
     return response.data;
   },
+
+  /**
+   * Trigger an AI Career Analysis for the authenticated user.
+   */
+  async analyzeCareer(data = {}) {
+    const response = await api.post('/career/analyze/', data);
+    return response.data;
+  },
+
+  /**
+   * Retrieve the latest career analysis for the authenticated user.
+   */
+  async getLatestAnalysis() {
+    const response = await api.get('/career/analysis/');
+    return response.data;
+  },
+
+  /**
+   * Retrieve historical list of career analyses.
+   */
+  async getAnalysisHistory() {
+    const response = await api.get('/career/analysis/', { params: { all: true } });
+    return response.data;
+  },
 };
 
 export default careerService;

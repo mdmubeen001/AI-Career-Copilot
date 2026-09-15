@@ -38,6 +38,14 @@ export default function Navbar() {
               >
                 Profile
               </NavLink>
+              <NavLink
+                to="/career-analysis"
+                className={({ isActive }) =>
+                  isActive ? 'nav-link active' : 'nav-link'
+                }
+              >
+                Career Analysis
+              </NavLink>
 
               <div className="user-menu">
                 <span className="user-greeting" title={user?.email}>

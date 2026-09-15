@@ -2,8 +2,11 @@ from django.db import transaction
 from rest_framework import generics, permissions, status, views
 from rest_framework.response import Response
 
-from .models import CareerProfile, Skill, UserSkill
+from ai_agents.services.supervisor import supervisor
+from .models import CareerAnalysis, CareerProfile, Skill, UserSkill
 from .serializers import (
+    CareerAnalysisSerializer,
+    CareerAnalyzeRequestSerializer,
     CareerProfileSerializer,
     SkillSerializer,
     UserSkillSerializer,
@@ -156,3 +159,91 @@ class UserSkillBulkSyncView(views.APIView):
         )
         serializer = UserSkillSerializer(current_skills, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class CareerAnalyzeView(views.APIView):
+    """
+    API endpoint to trigger an AI Career Analysis for the authenticated user.
+    POST /api/v1/career/analyze/
+    Optional payload: {"career_goal": "Full Stack Developer"}
+    Invokes SupervisorAgent -> CareerAgent -> LLMService.
+    Persists structured analysis to CareerAnalysis model.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        req_serializer = CareerAnalyzeRequestSerializer(data=request.data)
+        req_serializer.is_valid(raise_exception=True)
+        career_goal = req_serializer.validated_data.get('career_goal', '').strip()
+
+        context = {}
+        if career_goal:
+            context['career_goal'] = career_goal
+
+        # Invoke supervisor to route and orchestrate the analysis
+        analysis_data = supervisor.handle_request(
+            user=request.user,
+            request_type="career_analysis",
+            context=context
+        )
+
+        # Snapshot current user education, skills, interests, and experience level
+        profile = getattr(request.user, 'profile', None)
+        career_profile = getattr(request.user, 'career_profile', None)
+
+        current_education = profile.education if profile else ''
+        interests = profile.interests if profile else []
+        experience_level = career_profile.experience_level if career_profile else ''
+
+        # Current skills
+        current_skills = [
+            us.skill.name for us in UserSkill.objects.filter(user=request.user).select_related('skill')
+        ]
+        if not current_skills and profile and profile.skills:
+            current_skills = [str(s) for s in profile.skills]
+
+        # Save to database
+        record = CareerAnalysis.objects.create(
+            user=request.user,
+            target_career_goal=analysis_data['career_goal'],
+            current_education=current_education,
+            current_skills=current_skills,
+            interests=interests,
+            experience_level=experience_level,
+            career_readiness_estimate=analysis_data['career_readiness'],
+            recommended_career_paths=analysis_data['recommended_paths'],
+            strengths=analysis_data['strengths'],
+            weaknesses=analysis_data['weaknesses'],
+            reasoning=analysis_data['analysis'],
+            recommended_next_actions=analysis_data['next_actions']
+        )
+
+        serializer = CareerAnalysisSerializer(record)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class CareerAnalysisView(views.APIView):
+    """
+    API endpoint to retrieve career analyses for the authenticated user.
+    GET /api/v1/career/analysis/
+    Returns the latest analysis by default, or the full history if ?all=true is passed.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        queryset = CareerAnalysis.objects.filter(user=request.user).order_by('-created_at')
+
+        if request.query_params.get('all', '').lower() in ('true', '1'):
+            serializer = CareerAnalysisSerializer(queryset, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        latest = queryset.first()
+        if not latest:
+            return Response(
+                {"detail": "No career analysis found. Please run an analysis first."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = CareerAnalysisSerializer(latest)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+

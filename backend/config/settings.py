@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     # Local apps
     'accounts.apps.AccountsConfig',
     'career.apps.CareerConfig',
+    'ai_agents.apps.AiAgentsConfig',
 ]
 
 MIDDLEWARE = [
