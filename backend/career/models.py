@@ -1,0 +1,56 @@
+from django.db import models
+from django.conf import settings
+
+
+class CareerProfile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="career_profile"
+    )
+
+    current_role = models.CharField(max_length=150, blank=True)
+    target_role = models.CharField(max_length=150)
+    experience_level = models.CharField(max_length=50, blank=True)
+
+    bio = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.email} - {self.target_role}"
+
+
+class Skill(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
+class UserSkill(models.Model):
+    LEVEL_CHOICES = [
+        ("Beginner", "Beginner"),
+        ("Intermediate", "Intermediate"),
+        ("Advanced", "Advanced"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE
+    )
+
+    skill = models.ForeignKey(
+        Skill,
+        on_delete=models.CASCADE
+    )
+
+    level = models.CharField(
+        max_length=20,
+        choices=LEVEL_CHOICES,
+        default="Beginner"
+    )
+
+    def __str__(self):
+        return f"{self.user.email} - {self.skill.name}"

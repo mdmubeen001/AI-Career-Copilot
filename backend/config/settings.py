@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     # Local apps
     'accounts.apps.AccountsConfig',
+    'career.apps.CareerConfig',
 ]
 
 MIDDLEWARE = [

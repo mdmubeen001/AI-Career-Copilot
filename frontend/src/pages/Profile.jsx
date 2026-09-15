@@ -1,58 +1,167 @@
 import { useEffect, useState } from 'react';
 import useAuth from '../hooks/useAuth';
+import { careerService } from '../services/careerService';
 import { profileService } from '../services/profileService';
 import { formatApiError } from '../utils/errorHandler';
+
+const EXPERIENCE_LEVEL_OPTIONS = [
+  'Student / Intern',
+  'Entry-level (0-2 years)',
+  'Mid-level (3-5 years)',
+  'Senior (5-8 years)',
+  'Lead / Principal (8+ years)',
+  'Executive / Engineering Manager',
+];
+
+const SKILL_LEVEL_OPTIONS = ['Beginner', 'Intermediate', 'Advanced'];
 
 export default function Profile() {
   const { profile, updateProfile, refreshProfile } = useAuth();
 
-  const [formData, setFormData] = useState({
+  // Accounts Profile state
+  const [accountData, setAccountData] = useState({
     full_name: '',
     education: '',
     college: '',
     degree: '',
     graduation_year: '',
-    skills: '',
     interests: '',
-    career_goal: '',
   });
+
+  // Career Profile state
+  const [careerData, setCareerData] = useState({
+    current_role: '',
+    target_role: '',
+    experience_level: 'Entry-level (0-2 years)',
+    bio: '',
+  });
+
+  // User Skills state
+  const [userSkills, setUserSkills] = useState([]);
+  const [newSkillName, setNewSkillName] = useState('');
+  const [newSkillLevel, setNewSkillLevel] = useState('Intermediate');
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Initialize form data from profile
+  // Fetch initial profile & career data
   useEffect(() => {
-    async function loadData() {
+    let isMounted = true;
+
+    async function loadAllData() {
       try {
         setLoading(true);
-        const data = await profileService.getProfile();
-        setFormData({
-          full_name: data.full_name || '',
-          education: data.education || '',
-          college: data.college || '',
-          degree: data.degree || '',
-          graduation_year: data.graduation_year || '',
-          skills: Array.isArray(data.skills) ? data.skills.join(', ') : data.skills || '',
-          interests: Array.isArray(data.interests) ? data.interests.join(', ') : data.interests || '',
-          career_goal: data.career_goal || '',
+        setErrorMsg('');
+
+        // Fetch Accounts Profile, Career Profile, and User Skills concurrently
+        const [accProfile, carProfile, carSkills] = await Promise.all([
+          profileService.getProfile(),
+          careerService.getCareerProfile(),
+          careerService.getUserSkills(),
+        ]);
+
+        if (!isMounted) return;
+
+        setAccountData({
+          full_name: accProfile.full_name || '',
+          education: accProfile.education || '',
+          college: accProfile.college || '',
+          degree: accProfile.degree || '',
+          graduation_year: accProfile.graduation_year || '',
+          interests: Array.isArray(accProfile.interests)
+            ? accProfile.interests.join(', ')
+            : accProfile.interests || '',
         });
+
+        setCareerData({
+          current_role: carProfile.current_role || '',
+          target_role: carProfile.target_role || accProfile.career_goal || '',
+          experience_level: carProfile.experience_level || 'Entry-level (0-2 years)',
+          bio: carProfile.bio || '',
+        });
+
+        // Map user skills from career app
+        if (Array.isArray(carSkills) && carSkills.length > 0) {
+          setUserSkills(
+            carSkills.map((s) => ({
+              id: s.id,
+              name: s.skill_name || s.name || '',
+              level: s.level || 'Beginner',
+            }))
+          );
+        } else if (Array.isArray(accProfile.skills) && accProfile.skills.length > 0) {
+          // Fallback to legacy skills in accounts profile if career skills not yet set
+          setUserSkills(
+            accProfile.skills.map((s) => ({
+              name: typeof s === 'string' ? s : s.name || '',
+              level: 'Intermediate',
+            }))
+          );
+        }
       } catch (err) {
+        if (!isMounted) return;
         setErrorMsg(formatApiError(err));
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     }
 
-    loadData();
+    loadAllData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [refreshProfile]);
 
-  const handleChange = (e) => {
+  const handleAccountChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setAccountData((prev) => ({ ...prev, [name]: value }));
     if (successMsg) setSuccessMsg('');
     if (errorMsg) setErrorMsg('');
+  };
+
+  const handleCareerChange = (e) => {
+    const { name, value } = e.target;
+    setCareerData((prev) => ({ ...prev, [name]: value }));
+    if (successMsg) setSuccessMsg('');
+    if (errorMsg) setErrorMsg('');
+  };
+
+  const handleAddSkill = (e) => {
+    if (e) e.preventDefault();
+    const trimmed = newSkillName.trim();
+    if (!trimmed) return;
+
+    // Avoid duplicate names (case-insensitive)
+    const exists = userSkills.some(
+      (s) => s.name.toLowerCase() === trimmed.toLowerCase()
+    );
+
+    if (exists) {
+      // Update the level of existing skill
+      setUserSkills((prev) =>
+        prev.map((s) =>
+          s.name.toLowerCase() === trimmed.toLowerCase()
+            ? { ...s, level: newSkillLevel }
+            : s
+        )
+      );
+    } else {
+      setUserSkills((prev) => [
+        ...prev,
+        { name: trimmed, level: newSkillLevel },
+      ]);
+    }
+
+    setNewSkillName('');
+    if (successMsg) setSuccessMsg('');
+  };
+
+  const handleRemoveSkill = (indexToRemove) => {
+    setUserSkills((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+    if (successMsg) setSuccessMsg('');
   };
 
   const handleSubmit = async (e) => {
@@ -61,27 +170,46 @@ export default function Profile() {
     setSuccessMsg('');
     setErrorMsg('');
 
-    // Prepare payload for backend PUT /api/v1/profile/
-    const payload = {
-      full_name: formData.full_name,
-      education: formData.education,
-      college: formData.college,
-      degree: formData.degree,
-      graduation_year: formData.graduation_year ? parseInt(formData.graduation_year, 10) : null,
-      skills: formData.skills
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean),
-      interests: formData.interests
+    // Prepare Account Profile payload
+    const accountPayload = {
+      full_name: accountData.full_name,
+      education: accountData.education,
+      college: accountData.college,
+      degree: accountData.degree,
+      graduation_year: accountData.graduation_year
+        ? parseInt(accountData.graduation_year, 10)
+        : null,
+      interests: accountData.interests
         .split(',')
         .map((i) => i.trim())
         .filter(Boolean),
-      career_goal: formData.career_goal,
+      career_goal: careerData.target_role,
+      skills: userSkills.map((s) => s.name),
     };
 
+    // Prepare Career Profile payload
+    const careerPayload = {
+      current_role: careerData.current_role,
+      target_role: careerData.target_role,
+      experience_level: careerData.experience_level,
+      bio: careerData.bio,
+    };
+
+    // Prepare User Skills payload for bulk sync
+    const skillsPayload = userSkills.map((s) => ({
+      name: s.name,
+      level: s.level,
+    }));
+
     try {
-      await updateProfile(payload);
-      setSuccessMsg('Profile updated successfully!');
+      // Save all three parts concurrently
+      await Promise.all([
+        updateProfile(accountPayload),
+        careerService.updateCareerProfile(careerPayload),
+        careerService.syncUserSkills(skillsPayload),
+      ]);
+
+      setSuccessMsg('Career profile, personal details, and skills updated successfully!');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       setErrorMsg(formatApiError(err));
@@ -94,18 +222,12 @@ export default function Profile() {
     return (
       <div className="loading-screen">
         <div className="spinner"></div>
-        <p>Loading your profile details...</p>
+        <p>Loading your career profile...</p>
       </div>
     );
   }
 
-  // Parse current skills/interests for live tag previews
-  const previewSkills = formData.skills
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-  const previewInterests = formData.interests
+  const previewInterests = accountData.interests
     .split(',')
     .map((i) => i.trim())
     .filter(Boolean);
@@ -114,10 +236,11 @@ export default function Profile() {
     <div className="profile-page">
       <div className="profile-container">
         <div className="profile-header">
-          <div className="auth-badge">Account Settings</div>
+          <div className="auth-badge">Career &amp; Account Settings</div>
           <h1>Your Career Profile</h1>
           <p>
-            Manage your personal background, education, skills, and goals. This data powers your AI Agent recommendations.
+            Manage your career trajectory, target role, professional bio, and competencies.
+            This information powers your AI Agent recommendations and roadmaps.
           </p>
         </div>
 
@@ -158,12 +281,186 @@ export default function Profile() {
                   id="full_name"
                   type="text"
                   name="full_name"
-                  value={formData.full_name}
-                  onChange={handleChange}
-                  placeholder="e.g. John Doe"
+                  value={accountData.full_name}
+                  onChange={handleAccountChange}
+                  placeholder="e.g. Jane Doe"
                   disabled={saving}
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Career & Professional Trajectory (CareerProfile API) */}
+          <div className="form-section">
+            <h2 className="section-title">🎯 Career &amp; Professional Trajectory</h2>
+            <div className="form-grid-2">
+              <div className="form-group">
+                <label htmlFor="current_role">Current Role</label>
+                <input
+                  id="current_role"
+                  type="text"
+                  name="current_role"
+                  value={careerData.current_role}
+                  onChange={handleCareerChange}
+                  placeholder="e.g. Junior Full-Stack Developer, CS Student"
+                  disabled={saving}
+                />
+                <span className="input-hint">Where you currently stand in your career.</span>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="target_role">Target Career Role / Goal</label>
+                <input
+                  id="target_role"
+                  type="text"
+                  name="target_role"
+                  value={careerData.target_role}
+                  onChange={handleCareerChange}
+                  placeholder="e.g. Senior AI Systems Engineer"
+                  disabled={saving}
+                  required
+                />
+                <span className="input-hint">The specific role or destination you want to reach.</span>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="experience_level">Experience Level</label>
+                <select
+                  id="experience_level"
+                  name="experience_level"
+                  value={careerData.experience_level}
+                  onChange={handleCareerChange}
+                  disabled={saving}
+                >
+                  {EXPERIENCE_LEVEL_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+                <span className="input-hint">Assists the AI Copilot in calibrating roadmap difficulty.</span>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="interests">Interests &amp; Focus Domains</label>
+                <input
+                  id="interests"
+                  type="text"
+                  name="interests"
+                  value={accountData.interests}
+                  onChange={handleAccountChange}
+                  placeholder="e.g. LLM Agents, Distributed Systems, Cloud"
+                  disabled={saving}
+                />
+                {previewInterests.length > 0 && (
+                  <div className="tags-preview">
+                    <span className="preview-label">Live Tags:</span>
+                    {previewInterests.map((interest, index) => (
+                      <span key={index} className="tag tag-interest">
+                        {interest}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="bio">Professional Bio &amp; Summary</label>
+              <textarea
+                id="bio"
+                name="bio"
+                value={careerData.bio}
+                onChange={handleCareerChange}
+                rows="4"
+                placeholder="Share a brief overview of your background, career interests, key achievements, or what inspires you in your engineering journey..."
+                disabled={saving}
+              ></textarea>
+              <span className="input-hint">
+                Used by the Supervisor and Career Agents to customize resume bullet points and interview prep.
+              </span>
+            </div>
+          </div>
+
+          {/* Skills Management (Skill & UserSkill APIs) */}
+          <div className="form-section">
+            <h2 className="section-title">⚡ Skills &amp; Competencies</h2>
+
+            {/* Interactive Add Skill Bar */}
+            <div className="skill-add-bar">
+              <div className="skill-name-input">
+                <input
+                  id="new_skill_name"
+                  type="text"
+                  value={newSkillName}
+                  onChange={(e) => setNewSkillName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddSkill();
+                    }
+                  }}
+                  placeholder="Add skill (e.g. Python, Docker, PyTorch)"
+                  disabled={saving}
+                />
+              </div>
+
+              <div className="skill-level-select">
+                <select
+                  id="new_skill_level"
+                  value={newSkillLevel}
+                  onChange={(e) => setNewSkillLevel(e.target.value)}
+                  disabled={saving}
+                  aria-label="Skill proficiency level"
+                >
+                  {SKILL_LEVEL_OPTIONS.map((lvl) => (
+                    <option key={lvl} value={lvl}>
+                      {lvl}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={handleAddSkill}
+                disabled={saving || !newSkillName.trim()}
+              >
+                + Add Skill
+              </button>
+            </div>
+
+            {/* Rendered Skill Chips */}
+            <div className="form-group">
+              <label>Current Skills ({userSkills.length})</label>
+              {userSkills.length > 0 ? (
+                <div className="tags-container">
+                  {userSkills.map((skill, index) => (
+                    <span key={index} className="skill-tag-removable">
+                      <span>{skill.name}</span>
+                      <span
+                        className={`skill-level-badge skill-level-${skill.level.toLowerCase()}`}
+                      >
+                        {skill.level}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSkill(index)}
+                        className="skill-remove-btn"
+                        title={`Remove ${skill.name}`}
+                        aria-label={`Remove ${skill.name}`}
+                      >
+                        &times;
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="input-hint">
+                  No skills added yet. Type a skill name above and click &ldquo;+ Add Skill&rdquo;.
+                </p>
+              )}
             </div>
           </div>
 
@@ -177,9 +474,9 @@ export default function Profile() {
                   id="education"
                   type="text"
                   name="education"
-                  value={formData.education}
-                  onChange={handleChange}
-                  placeholder="e.g. Undergraduate, Post Graduate, High School"
+                  value={accountData.education}
+                  onChange={handleAccountChange}
+                  placeholder="e.g. Undergraduate, Master's Degree"
                   disabled={saving}
                 />
               </div>
@@ -190,8 +487,8 @@ export default function Profile() {
                   id="college"
                   type="text"
                   name="college"
-                  value={formData.college}
-                  onChange={handleChange}
+                  value={accountData.college}
+                  onChange={handleAccountChange}
                   placeholder="e.g. Stanford University"
                   disabled={saving}
                 />
@@ -203,8 +500,8 @@ export default function Profile() {
                   id="degree"
                   type="text"
                   name="degree"
-                  value={formData.degree}
-                  onChange={handleChange}
+                  value={accountData.degree}
+                  onChange={handleAccountChange}
                   placeholder="e.g. B.S. in Computer Science"
                   disabled={saving}
                 />
@@ -216,81 +513,14 @@ export default function Profile() {
                   id="graduation_year"
                   type="number"
                   name="graduation_year"
-                  value={formData.graduation_year}
-                  onChange={handleChange}
+                  value={accountData.graduation_year}
+                  onChange={handleAccountChange}
                   placeholder="e.g. 2026"
                   min="1950"
                   max="2100"
                   disabled={saving}
                 />
               </div>
-            </div>
-          </div>
-
-          {/* Skills & Goals */}
-          <div className="form-section">
-            <h2 className="section-title">⚡ Skills, Interests &amp; Career Aspirations</h2>
-
-            <div className="form-group">
-              <label htmlFor="skills">Skills (Comma-separated)</label>
-              <input
-                id="skills"
-                type="text"
-                name="skills"
-                value={formData.skills}
-                onChange={handleChange}
-                placeholder="e.g. Python, Django, React, Machine Learning, SQL"
-                disabled={saving}
-              />
-              {previewSkills.length > 0 && (
-                <div className="tags-preview">
-                  <span className="preview-label">Live Tags:</span>
-                  {previewSkills.map((skill, index) => (
-                    <span key={index} className="tag tag-skill">
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="interests">Interests (Comma-separated)</label>
-              <input
-                id="interests"
-                type="text"
-                name="interests"
-                value={formData.interests}
-                onChange={handleChange}
-                placeholder="e.g. AI Agents, Distributed Systems, Web3, Cloud Architecture"
-                disabled={saving}
-              />
-              {previewInterests.length > 0 && (
-                <div className="tags-preview">
-                  <span className="preview-label">Live Tags:</span>
-                  {previewInterests.map((interest, index) => (
-                    <span key={index} className="tag tag-interest">
-                      {interest}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="career_goal">Primary Career Goal</label>
-              <textarea
-                id="career_goal"
-                name="career_goal"
-                value={formData.career_goal}
-                onChange={handleChange}
-                rows="3"
-                placeholder="e.g. Become an AI Software Engineer at a leading technology firm specializing in autonomous multi-agent systems."
-                disabled={saving}
-              ></textarea>
-              <span className="input-hint">
-                The Supervisor Agent will use this goal to generate targeted skill-gap roadmaps and project recommendations.
-              </span>
             </div>
           </div>
 
@@ -312,7 +542,7 @@ export default function Profile() {
             >
               {saving ? (
                 <span className="btn-loading">
-                  <span className="spinner-sm"></span> Saving Profile...
+                  <span className="spinner-sm"></span> Saving Profile &amp; Career Details...
                 </span>
               ) : (
                 'Save Profile Changes'
