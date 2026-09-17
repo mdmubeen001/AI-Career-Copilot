@@ -4,13 +4,14 @@ An API-first AI Multi-Agent platform designed to guide engineering students and 
 
 ---
 
-## 🚀 Key Features (Phase 1, 2 & 3 Active)
+## 🚀 Key Features (Phase 1, 2, 3 & 4 Active)
 
 - **JWT Authentication & Profile Engine**: Secure email-based registration, token refresh, and complete academic/personal profile management.
 - **Career & Skills Core**: Relational skills repository with proficiency levels (`Beginner`, `Intermediate`, `Advanced`), target roles, and professional bios.
 - **Supervisor Agent Orchestration**: Central orchestrator that inspects candidate profile context and routes requests to specialized autonomous agents.
 - **Career Analysis Agent**: Analyzes candidate credentials, calculates an objective career readiness score (0–100%), flags strengths, identifies critical knowledge gaps, suggests adjacent paths, and formulates prioritized action steps.
 - **AI Resume & ATS Compatibility Analyzer**: Ingests PDF and DOCX resume documents, parses selectable text, and computes an AI-estimated ATS compatibility score, extracting detected skills, missing keywords, section evaluations, and actionable improvements.
+- **AI Job Matching & Alignment**: Ingests target job descriptions and benchmarks them against uploaded resumes and career profiles. Computes an AI-estimated match compatibility percentage, verified overlapping competencies, missing job requirements, candidate strengths, alignment gaps, and actionable recommendations.
 - **Provider-Independent LLM Abstraction**: Safe server-side AI interface with built-in development fallback and pluggable support for Google Gemini, OpenAI, or custom LLMs.
 - **Modern Responsive Web UI**: React + Vite interface with cyberpunk dark-mode aesthetics, glassmorphism, drag-and-drop dropzones, interactive tags, and real-time validation.
 
@@ -19,22 +20,28 @@ An API-first AI Multi-Agent platform designed to guide engineering students and 
 ## 🤖 Multi-Agent Architecture
 
 ```
-User Request / Web / Mobile App
+React Frontend / Web Client
+              ↓
+    [ Django REST API ]
               ↓
   [ Supervisor Agent Orchestrator ]
               ↓
      Select & Dispatch Agent
-   ↙                           ↘
-[ Career Analysis Agent ]    [ Resume & ATS Analyzer ]
-         ↓                             ↓
-  [ LLM Service Provider ] ← (Text Extraction via pypdf / python-docx)
-(Gemini / OpenAI / Fallback)
-         ↓                             ↓
-[ Structured Schema Validation ] [ Structured ATS Schema Validation ]
-         ↓                             ↓
- [ CareerAnalysis Model ]        [ Resume & ResumeAnalysis Models ]
-         ↓                             ↓
-  JSON Response to Client        JSON Response to Client
+   ↙             ↓              ↘
+[ Career Agent ] [ Resume Analyzer ] [ Job Matching Agent ]
+         ↓               ↓                    ↓
+         └───────────────┼────────────────────┘
+                         ↓
+             [ LLM Service Provider ]
+      (Gemini / OpenAI / Heuristic Fallback)
+                         ↓
+         [ Structured JSON Validation ]
+                         ↓
+  [ Relational Models: CareerAnalysis / Resume / JobMatch ]
+                         ↓
+              JSON Response to Client
+                         ↓
+           Interactive React Results UI
 ```
 
 ### Upcoming Specialized Agents (Roadmap)
@@ -79,35 +86,44 @@ All endpoints are prefixed with `/api/v1/`.
 | `GET`, `DELETE` | `/api/v1/resumes/<id>/` | Retrieve resume details or delete document | Yes (Bearer JWT) |
 | `POST` | `/api/v1/resumes/<id>/analyze/` | Execute/re-run AI ATS analysis for target role | Yes (Bearer JWT) |
 
-> **Notice**: ATS scores are explicitly presented as AI-generated compatibility estimates for keyword benchmarking and do not represent proprietary algorithms of specific employer ATS software.
+### Job Matching Module
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/jobs/` | Create a target Job Description | Yes (Bearer JWT) |
+| `GET` | `/api/v1/jobs/` | List user's saved Job Descriptions | Yes (Bearer JWT) |
+| `GET`, `DELETE` | `/api/v1/jobs/<id>/` | Retrieve or delete a Job Description | Yes (Bearer JWT) |
+| `POST` | `/api/v1/jobs/<id>/match/` | Evaluate Job Match against a user's resume | Yes (Bearer JWT) |
+| `GET` | `/api/v1/jobs/matches/` | List user's past Job Matches | Yes (Bearer JWT) |
+| `GET` | `/api/v1/jobs/matches/<id>/` | Retrieve an individual Job Match evaluation | Yes (Bearer JWT) |
 
-#### Example Response: `POST /api/v1/resumes/1/analyze/`
+> **Notice**: Job Match scores are strictly AI-generated estimates to benchmark preparation and do not represent official ATS algorithms or guaranteed hiring outcomes.
+
+#### Example Response: `POST /api/v1/jobs/1/match/`
 ```json
 {
   "id": 1,
-  "target_role": "Senior Backend Engineer",
-  "summary": "Resume demonstrates strong backend alignment for Senior Backend Engineer with an estimated ATS compatibility score of 78%...",
-  "ats_score_estimate": 78,
-  "detected_skills": ["Python", "Django", "PostgreSQL", "Docker", "AWS", "REST API", "Git"],
-  "missing_skills": ["Redis", "Linux", "CI/CD"],
+  "job_description": 1,
+  "job_title": "Python Django Developer",
+  "company": "Tech Corp",
+  "resume": 1,
+  "resume_filename": "Developer_Resume.pdf",
+  "match_score_estimate": 78,
+  "summary": "Candidate profile demonstrates an estimated 78% match compatibility for 'Python Django Developer' at Tech Corp...",
+  "matching_skills": ["Python", "Django", "PostgreSQL", "Docker", "REST API", "Git"],
+  "missing_skills": ["AWS", "CI/CD", "Redis"],
   "strengths": [
-    "Strong keyword alignment for core competencies: Python, Django, PostgreSQL, Docker.",
-    "Dedicated project section demonstrating practical application.",
-    "Professional experience clearly delineated."
+    "Strong direct alignment on core job skills: Python, Django, PostgreSQL, Docker.",
+    "High overall technical coverage across the requested stack."
   ],
-  "weaknesses": [
-    "Missing high-impact keywords for Senior Backend Engineer: Redis, Linux.",
-    "Could incorporate more quantifiable business metrics (e.g. latency reductions, scale)."
+  "gaps": [
+    "Missing high-priority keywords from job description: AWS, CI/CD, Redis."
   ],
-  "experience_summary": "Experience highlights documented professional roles and technical tasks...",
-  "education_summary": "Education: B.S. in Computer Science, State University, 2019...",
-  "project_summary": "Technical projects effectively showcase practical software development...",
   "recommendations": [
-    "Tailor resume summary and bullet points to emphasize Senior Backend Engineer keywords.",
-    "Prioritize incorporating missing technical skills: Redis, Linux, CI/CD.",
-    "Use the Google XYZ resume formula: Accomplished [X] as measured by [Y], by doing [Z]."
+    "Tailor your resume summary to directly echo keywords from 'Python Django Developer'.",
+    "Bridge priority skill gaps by featuring recent projects using: AWS, CI/CD, Redis.",
+    "Use active action verbs and quantify achievements with the Google XYZ formula: Accomplished [X] as measured by [Y], by doing [Z]."
   ],
-  "created_at": "2026-09-15T06:15:00Z"
+  "created_at": "2026-09-17T04:15:00Z"
 }
 ```
 
@@ -152,7 +168,7 @@ python manage.py migrate
 
 # Run system checks and automated tests
 python manage.py check
-python manage.py test accounts career resumes
+python manage.py test accounts career resumes jobs
 
 # Launch Django development server
 python manage.py runserver

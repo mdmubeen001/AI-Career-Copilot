@@ -27,13 +27,21 @@ class SupervisorAgent:
         if request_type == "career_analysis":
             return self._run_career_analysis(user_context)
 
+        elif request_type == "job_matching":
+            resume = context.get('resume')
+            job_description = context.get('job_description')
+            if not resume or not job_description:
+                raise ValueError("Both 'resume' and 'job_description' must be provided for job matching.")
+            from jobs.services.job_matcher import JobMatcher
+            matcher = JobMatcher()
+            return matcher.match(resume=resume, job_description=job_description, user=user)
+
         # Future agent routing hooks
         elif request_type in [
             "skill_gap_analysis",
             "learning_roadmap",
             "project_recommendation",
             "resume_optimization",
-            "job_matching",
             "interview_prep",
             "flashcard_generation",
         ]:

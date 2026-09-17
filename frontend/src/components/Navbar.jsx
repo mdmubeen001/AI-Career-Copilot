@@ -54,6 +54,14 @@ export default function Navbar() {
               >
                 Resume Analyzer
               </NavLink>
+              <NavLink
+                to="/job-matching"
+                className={({ isActive }) =>
+                  isActive ? 'nav-link active' : 'nav-link'
+                }
+              >
+                Job Matching
+              </NavLink>
 
               <div className="user-menu">
                 <span className="user-greeting" title={user?.email}>

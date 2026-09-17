@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'career.apps.CareerConfig',
     'ai_agents.apps.AiAgentsConfig',
     'resumes.apps.ResumesConfig',
+    'jobs.apps.JobsConfig',
 ]
 
 MIDDLEWARE = [
