@@ -4,7 +4,7 @@ An API-first AI Multi-Agent platform designed to guide engineering students and 
 
 ---
 
-## 🚀 Key Features (Phase 1, 2, 3 & 4 Active)
+## 🚀 Key Features (Phase 1, 2, 3, 4 & 5 Active)
 
 - **JWT Authentication & Profile Engine**: Secure email-based registration, token refresh, and complete academic/personal profile management.
 - **Career & Skills Core**: Relational skills repository with proficiency levels (`Beginner`, `Intermediate`, `Advanced`), target roles, and professional bios.
@@ -12,6 +12,7 @@ An API-first AI Multi-Agent platform designed to guide engineering students and 
 - **Career Analysis Agent**: Analyzes candidate credentials, calculates an objective career readiness score (0–100%), flags strengths, identifies critical knowledge gaps, suggests adjacent paths, and formulates prioritized action steps.
 - **AI Resume & ATS Compatibility Analyzer**: Ingests PDF and DOCX resume documents, parses selectable text, and computes an AI-estimated ATS compatibility score, extracting detected skills, missing keywords, section evaluations, and actionable improvements.
 - **AI Job Matching & Alignment**: Ingests target job descriptions and benchmarks them against uploaded resumes and career profiles. Computes an AI-estimated match compatibility percentage, verified overlapping competencies, missing job requirements, candidate strengths, alignment gaps, and actionable recommendations.
+- **AI Interview Agent & Mock Simulator**: Simulates role-specific technical, behavioral, and situational interviews. Generates dynamic questions grounded in candidate profile/resume, evaluates submitted answers with score and granular rubric feedback (strengths, weaknesses, missing points, and improvements), and synthesizes comprehensive final session performance.
 - **Provider-Independent LLM Abstraction**: Safe server-side AI interface with built-in development fallback and pluggable support for Google Gemini, OpenAI, or custom LLMs.
 - **Modern Responsive Web UI**: React + Vite interface with cyberpunk dark-mode aesthetics, glassmorphism, drag-and-drop dropzones, interactive tags, and real-time validation.
 
@@ -26,28 +27,50 @@ React Frontend / Web Client
               ↓
   [ Supervisor Agent Orchestrator ]
               ↓
-     Select & Dispatch Agent
-   ↙             ↓              ↘
-[ Career Agent ] [ Resume Analyzer ] [ Job Matching Agent ]
-         ↓               ↓                    ↓
-         └───────────────┼────────────────────┘
-                         ↓
-             [ LLM Service Provider ]
-      (Gemini / OpenAI / Heuristic Fallback)
-                         ↓
-         [ Structured JSON Validation ]
-                         ↓
-  [ Relational Models: CareerAnalysis / Resume / JobMatch ]
-                         ↓
-              JSON Response to Client
-                         ↓
-           Interactive React Results UI
+      Select & Dispatch Agent
+    ↙         ↓               ↓               ↘
+[ Career ] [ Resume ] [ Job Matching ] [ Interview Agent ]
+    ↓         ↓               ↓               ↓
+    └─────────┴───────┬───────┴───────────────┘
+                      ↓
+          [ LLM Service Provider ]
+   (Gemini / OpenAI / Heuristic Fallback)
+                      ↓
+      [ Structured JSON Validation ]
+                      ↓
+  [ Relational Models: Career / Resume / Match / Interview ]
+                      ↓
+           JSON Response to Client
+                      ↓
+        Interactive React Results UI
+```
+
+### Interview Agent Architecture Flow
+
+```
+React
+  ↓
+Django REST API
+  ↓
+Interview Agent
+  ↓
+Profile + CareerProfile + Skills + Resume + ResumeAnalysis
+  ↓
+LLM
+  ↓
+Questions
+  ↓
+User Answers
+  ↓
+AI Evaluation
+  ↓
+Final Interview Result
 ```
 
 ### Upcoming Specialized Agents (Roadmap)
 - `skill_gap_agent`: In-depth breakdown of granular competencies and prerequisites.
 - `learning_roadmap_agent`: Adaptive weekly learning curriculum and milestones.
-- `interview_prep_agent` & `rag_agent`: Mock technical interviews and contextual retrieval over documentation.
+- `rag_agent`: Contextual retrieval over technical documentation and custom company handbooks.
 
 ---
 
@@ -98,34 +121,48 @@ All endpoints are prefixed with `/api/v1/`.
 
 > **Notice**: Job Match scores are strictly AI-generated estimates to benchmark preparation and do not represent official ATS algorithms or guaranteed hiring outcomes.
 
-#### Example Response: `POST /api/v1/jobs/1/match/`
-```json
-{
-  "id": 1,
-  "job_description": 1,
-  "job_title": "Python Django Developer",
-  "company": "Tech Corp",
-  "resume": 1,
-  "resume_filename": "Developer_Resume.pdf",
-  "match_score_estimate": 78,
-  "summary": "Candidate profile demonstrates an estimated 78% match compatibility for 'Python Django Developer' at Tech Corp...",
-  "matching_skills": ["Python", "Django", "PostgreSQL", "Docker", "REST API", "Git"],
-  "missing_skills": ["AWS", "CI/CD", "Redis"],
-  "strengths": [
-    "Strong direct alignment on core job skills: Python, Django, PostgreSQL, Docker.",
-    "High overall technical coverage across the requested stack."
-  ],
-  "gaps": [
-    "Missing high-priority keywords from job description: AWS, CI/CD, Redis."
-  ],
-  "recommendations": [
-    "Tailor your resume summary to directly echo keywords from 'Python Django Developer'.",
-    "Bridge priority skill gaps by featuring recent projects using: AWS, CI/CD, Redis.",
-    "Use active action verbs and quantify achievements with the Google XYZ formula: Accomplished [X] as measured by [Y], by doing [Z]."
-  ],
-  "created_at": "2026-09-17T04:15:00Z"
-}
-```
+### Interview Agent Module
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/interviews/` | Create a new interview session | Yes (Bearer JWT) |
+| `GET` | `/api/v1/interviews/` | List user's interview sessions | Yes (Bearer JWT) |
+| `GET` | `/api/v1/interviews/<id>/` | Retrieve specific session details | Yes (Bearer JWT) |
+| `POST` | `/api/v1/interviews/<id>/start/` | Start session & generate questions via AI | Yes (Bearer JWT) |
+| `GET` | `/api/v1/interviews/<id>/questions/` | List questions for the session | Yes (Bearer JWT) |
+| `POST` | `/api/v1/interviews/<id>/questions/<qid>/answer/` | Submit answer & evaluate with AI rubric | Yes (Bearer JWT) |
+| `POST` | `/api/v1/interviews/<id>/complete/` | Complete session & generate final evaluation | Yes (Bearer JWT) |
+| `GET` | `/api/v1/interviews/<id>/result/` | Retrieve final evaluation breakdown | Yes (Bearer JWT) |
+
+> **Notice**: Interview scores and feedback are strictly AI-generated estimates to benchmark preparation and do not represent official hiring assessments.
+
+---
+
+## 🗄️ Data Models (Interviews)
+
+- **`InterviewSession`**:
+  - `user` (FK to User, user-isolated)
+  - `resume` (FK to Resume, optional)
+  - `target_role` (CharField)
+  - `interview_type` (`technical`, `behavioral`, `mixed`)
+  - `difficulty` (`beginner`, `intermediate`, `advanced`)
+  - `total_questions` (PositiveIntegerField, 1–20)
+  - `current_question` (PositiveIntegerField)
+  - `status` (`not_started`, `in_progress`, `completed`)
+  - `overall_score` (IntegerField, 0–100)
+  - `overall_feedback` (TextField)
+  - `strengths`, `weaknesses`, `recommendations` (JSONFields)
+- **`InterviewQuestion`**:
+  - `session` (FK to InterviewSession)
+  - `question_number` (PositiveIntegerField)
+  - `question_text` (TextField)
+  - `question_type` (`technical`, `behavioral`, `situational`)
+  - `expected_topics` (JSONField)
+- **`InterviewAnswer`**:
+  - `question` (OneToOneField to InterviewQuestion)
+  - `answer_text` (TextField)
+  - `score` (IntegerField, 0–100)
+  - `evaluation` (TextField)
+  - `strengths`, `weaknesses`, `missing_points`, `improvement_suggestions` (JSONFields)
 
 ---
 

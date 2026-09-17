@@ -10,6 +10,7 @@ import Profile from './pages/Profile';
 import Register from './pages/Register';
 import ResumeAnalyzer from './pages/ResumeAnalyzer';
 import JobMatching from './pages/JobMatching';
+import Interview from './pages/Interview';
 
 export default function App() {
   return (
@@ -35,6 +36,7 @@ export default function App() {
                 <Route path="/career-analysis" element={<CareerAnalysis />} />
                 <Route path="/resume-analyzer" element={<ResumeAnalyzer />} />
                 <Route path="/job-matching" element={<JobMatching />} />
+                <Route path="/interview" element={<Interview />} />
               </Route>
 
               {/* Catch-all fallback */}

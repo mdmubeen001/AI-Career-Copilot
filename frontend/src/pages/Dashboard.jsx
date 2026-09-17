@@ -26,6 +26,9 @@ export default function Dashboard() {
           <Link to="/job-matching" className="btn btn-primary">
             🎯 Match a Job
           </Link>
+          <Link to="/interview" className="btn btn-outline">
+            🎙️ Practice Interview
+          </Link>
           <Link to="/resume-analyzer" className="btn btn-outline">
             📄 Resume Analyzer
           </Link>
@@ -152,6 +155,30 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Interview Agent Card */}
+        <div className="dashboard-card">
+          <div className="card-header">
+            <div className="card-icon">🎙️</div>
+            <div>
+              <h3>AI Interview Practice</h3>
+              <p>Role-specific simulations &amp; AI rubric grading</p>
+            </div>
+          </div>
+          <div className="card-body">
+            <div className="career-goal-box">
+              <p className="text-secondary text-sm mb-3">
+                Practice role-specific interviews and get AI feedback on your answers.
+              </p>
+              <div className="goal-actions-row">
+                <span className="goal-status">Dynamic Rubric Feedback</span>
+                <Link to="/interview" className="btn btn-primary btn-sm">
+                  Practice Interview
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Skills Card */}
         <div className="dashboard-card">
           <div className="card-header">
@@ -241,6 +268,11 @@ export default function Dashboard() {
               <span className="agent-badge">Phase 4 (Active)</span>
               <h4>Job Matching Agent</h4>
               <p>Target role alignment, competency gap analysis &amp; tailored advice</p>
+            </div>
+            <div className="agent-item active">
+              <span className="agent-badge">Phase 5 (Active)</span>
+              <h4>AI Interview Agent</h4>
+              <p>Dynamic question generation, answer rubric evaluation &amp; coaching</p>
             </div>
           </div>
         </div>

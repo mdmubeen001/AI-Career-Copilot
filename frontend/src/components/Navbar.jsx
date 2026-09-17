@@ -62,6 +62,14 @@ export default function Navbar() {
               >
                 Job Matching
               </NavLink>
+              <NavLink
+                to="/interview"
+                className={({ isActive }) =>
+                  isActive ? 'nav-link active' : 'nav-link'
+                }
+              >
+                Interview
+              </NavLink>
 
               <div className="user-menu">
                 <span className="user-greeting" title={user?.email}>
