@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
 import Register from './pages/Register';
+import ResumeAnalyzer from './pages/ResumeAnalyzer';
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/career-analysis" element={<CareerAnalysis />} />
+                <Route path="/resume-analyzer" element={<ResumeAnalyzer />} />
               </Route>
 
               {/* Catch-all fallback */}

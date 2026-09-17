@@ -22,10 +22,10 @@ class LLMService:
             or ''
         ).strip()
 
-    def generate_structured_analysis(self, prompt: str, system_prompt: str, context_data: dict) -> dict:
+    def generate_json(self, prompt: str, system_prompt: str) -> dict | None:
         """
-        Generate a structured JSON analysis.
-        Attempts remote LLM call if configured; gracefully falls back to the deterministic analytical engine.
+        Generic JSON completion from the configured LLM provider.
+        Returns parsed dict or None if unconfigured or failed.
         """
         if self.provider == 'gemini' and self.api_key:
             result = self._call_gemini(prompt, system_prompt)
@@ -37,8 +37,20 @@ class LLMService:
             if result:
                 return result
 
+        return None
+
+    def generate_structured_analysis(self, prompt: str, system_prompt: str, context_data: dict) -> dict:
+        """
+        Generate a structured JSON analysis for career assessments.
+        Attempts remote LLM call if configured; gracefully falls back to the deterministic analytical engine.
+        """
+        result = self.generate_json(prompt, system_prompt)
+        if result:
+            return result
+
         # Default safe development fallback / mock engine
         return self._generate_contextual_fallback(context_data)
+
 
     def _call_gemini(self, prompt: str, system_prompt: str) -> dict | None:
         """Call Google Gemini API via REST."""

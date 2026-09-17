@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'accounts.apps.AccountsConfig',
     'career.apps.CareerConfig',
     'ai_agents.apps.AiAgentsConfig',
+    'resumes.apps.ResumesConfig',
 ]
 
 MIDDLEWARE = [
@@ -183,3 +184,10 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Media Files (User Resumes and Uploads)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# Maximum Upload Size (5 MB default)
+MAX_UPLOAD_SIZE = int(os.environ.get('MAX_UPLOAD_SIZE', 5 * 1024 * 1024))

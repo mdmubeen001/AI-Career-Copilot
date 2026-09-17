@@ -23,8 +23,11 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="welcome-actions">
-          <Link to="/career-analysis" className="btn btn-primary">
-            ⚡ Analyze My Career
+          <Link to="/resume-analyzer" className="btn btn-primary">
+            📄 AI Resume Analyzer
+          </Link>
+          <Link to="/career-analysis" className="btn btn-outline">
+            ⚡ Career Analysis
           </Link>
           <Link to="/profile" className="btn btn-outline">
             Edit Full Profile
@@ -98,6 +101,30 @@ export default function Dashboard() {
                 </Link>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Resume Analyzer Card */}
+        <div className="dashboard-card">
+          <div className="card-header">
+            <div className="card-icon">📄</div>
+            <div>
+              <h3>AI Resume &amp; ATS Scoring</h3>
+              <p>Document ingestion &amp; keyword matching</p>
+            </div>
+          </div>
+          <div className="card-body">
+            <div className="career-goal-box">
+              <p className="text-secondary text-sm mb-3">
+                Upload your PDF or DOCX resume to check estimated ATS compatibility, extract detected competencies, and identify high-impact missing keywords.
+              </p>
+              <div className="goal-actions-row">
+                <span className="goal-status">PDF &amp; DOCX Supported</span>
+                <Link to="/resume-analyzer" className="btn btn-primary btn-sm">
+                  Launch Analyzer
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -181,15 +208,15 @@ export default function Dashboard() {
               <h4>Supervisor &amp; Career Agent</h4>
               <p>LangGraph orchestration &amp; personalized career trajectory matching</p>
             </div>
-            <div className="agent-item upcoming">
-              <span className="agent-badge">Phase 2</span>
-              <h4>Skill Gap &amp; Roadmap Agent</h4>
-              <p>Adaptive timelines and dynamic learning tasks</p>
+            <div className="agent-item active">
+              <span className="agent-badge">Phase 3 (Active)</span>
+              <h4>Resume &amp; ATS Analyzer</h4>
+              <p>Multi-format parsing (.pdf, .docx), ATS scoring &amp; keyword matching</p>
             </div>
             <div className="agent-item upcoming">
-              <span className="agent-badge">Phase 3-4</span>
-              <h4>Resume, Interview &amp; RAG</h4>
-              <p>Document ingestion, ChromaDB vector search &amp; mock interviews</p>
+              <span className="agent-badge">Phase 4</span>
+              <h4>Interview &amp; RAG Agent</h4>
+              <p>Mock interview sessions &amp; ChromaDB contextual retrieval</p>
             </div>
           </div>
         </div>

@@ -4,14 +4,15 @@ An API-first AI Multi-Agent platform designed to guide engineering students and 
 
 ---
 
-## 🚀 Key Features (Phase 1 & Phase 2 Active)
+## 🚀 Key Features (Phase 1, 2 & 3 Active)
 
 - **JWT Authentication & Profile Engine**: Secure email-based registration, token refresh, and complete academic/personal profile management.
 - **Career & Skills Core**: Relational skills repository with proficiency levels (`Beginner`, `Intermediate`, `Advanced`), target roles, and professional bios.
 - **Supervisor Agent Orchestration**: Central orchestrator that inspects candidate profile context and routes requests to specialized autonomous agents.
 - **Career Analysis Agent**: Analyzes candidate credentials, calculates an objective career readiness score (0–100%), flags strengths, identifies critical knowledge gaps, suggests adjacent paths, and formulates prioritized action steps.
+- **AI Resume & ATS Compatibility Analyzer**: Ingests PDF and DOCX resume documents, parses selectable text, and computes an AI-estimated ATS compatibility score, extracting detected skills, missing keywords, section evaluations, and actionable improvements.
 - **Provider-Independent LLM Abstraction**: Safe server-side AI interface with built-in development fallback and pluggable support for Google Gemini, OpenAI, or custom LLMs.
-- **Modern Responsive Web UI**: React + Vite interface with cyberpunk dark-mode aesthetics, glassmorphism, interactive tags, and real-time validation.
+- **Modern Responsive Web UI**: React + Vite interface with cyberpunk dark-mode aesthetics, glassmorphism, drag-and-drop dropzones, interactive tags, and real-time validation.
 
 ---
 
@@ -23,24 +24,23 @@ User Request / Web / Mobile App
   [ Supervisor Agent Orchestrator ]
               ↓
      Select & Dispatch Agent
-              ↓
-    [ Career Analysis Agent ]
-              ↓
-    [ LLM Service Provider ]
- (Gemini / OpenAI / Intelligent Fallback)
-              ↓
-    [ Structured Schema Validation ]
-              ↓
-   [ Database Persistence ] (CareerAnalysis)
-              ↓
-   JSON Response to Client
+   ↙                           ↘
+[ Career Analysis Agent ]    [ Resume & ATS Analyzer ]
+         ↓                             ↓
+  [ LLM Service Provider ] ← (Text Extraction via pypdf / python-docx)
+(Gemini / OpenAI / Fallback)
+         ↓                             ↓
+[ Structured Schema Validation ] [ Structured ATS Schema Validation ]
+         ↓                             ↓
+ [ CareerAnalysis Model ]        [ Resume & ResumeAnalysis Models ]
+         ↓                             ↓
+  JSON Response to Client        JSON Response to Client
 ```
 
 ### Upcoming Specialized Agents (Roadmap)
-- `skill_gap_agent`: In-depth breakdown of granular competencies.
+- `skill_gap_agent`: In-depth breakdown of granular competencies and prerequisites.
 - `learning_roadmap_agent`: Adaptive weekly learning curriculum and milestones.
-- `project_recommendation_agent`: Portfolio projects tailored to closing specific gaps.
-- `resume_optimization_agent` & `interview_prep_agent`: Resume tailoring and mock interview simulation.
+- `interview_prep_agent` & `rag_agent`: Mock technical interviews and contextual retrieval over documentation.
 
 ---
 
@@ -71,43 +71,43 @@ All endpoints are prefixed with `/api/v1/`.
 | `POST` | `/api/v1/career/analyze/` | Generate career readiness analysis for target goal | Yes (Bearer JWT) |
 | `GET` | `/api/v1/career/analysis/` | Retrieve user's latest analysis (`?all=true` for history) | Yes (Bearer JWT) |
 
-#### Example Request: `POST /api/v1/career/analyze/`
-```json
-{
-  "career_goal": "Senior AI Systems Engineer"
-}
-```
+### Resume & ATS Analyzer
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/resumes/upload/` | Upload `.pdf` or `.docx` resume (multipart, max 5MB) | Yes (Bearer JWT) |
+| `GET` | `/api/v1/resumes/` | List all uploaded resumes for authenticated user | Yes (Bearer JWT) |
+| `GET`, `DELETE` | `/api/v1/resumes/<id>/` | Retrieve resume details or delete document | Yes (Bearer JWT) |
+| `POST` | `/api/v1/resumes/<id>/analyze/` | Execute/re-run AI ATS analysis for target role | Yes (Bearer JWT) |
 
-#### Example Response:
+> **Notice**: ATS scores are explicitly presented as AI-generated compatibility estimates for keyword benchmarking and do not represent proprietary algorithms of specific employer ATS software.
+
+#### Example Response: `POST /api/v1/resumes/1/analyze/`
 ```json
 {
   "id": 1,
-  "career_goal": "Senior AI Systems Engineer",
-  "career_readiness": 72,
-  "recommended_paths": [
-    "Machine Learning Engineer",
-    "AI Research Assistant",
-    "Data Scientist",
-    "LLM Application Engineer"
-  ],
+  "target_role": "Senior Backend Engineer",
+  "summary": "Resume demonstrates strong backend alignment for Senior Backend Engineer with an estimated ATS compatibility score of 78%...",
+  "ats_score_estimate": 78,
+  "detected_skills": ["Python", "Django", "PostgreSQL", "Docker", "AWS", "REST API", "Git"],
+  "missing_skills": ["Redis", "Linux", "CI/CD"],
   "strengths": [
-    "Python",
-    "Django",
-    "React"
+    "Strong keyword alignment for core competencies: Python, Django, PostgreSQL, Docker.",
+    "Dedicated project section demonstrating practical application.",
+    "Professional experience clearly delineated."
   ],
   "weaknesses": [
-    "PyTorch",
-    "Deep Learning",
-    "TensorFlow"
+    "Missing high-impact keywords for Senior Backend Engineer: Redis, Linux.",
+    "Could incorporate more quantifiable business metrics (e.g. latency reductions, scale)."
   ],
-  "analysis": "Candidate profile shows promising alignment towards the target role...",
-  "next_actions": [
-    "Deepen proficiency in priority gap areas: PyTorch, Deep Learning.",
-    "Architect a full-scale portfolio project demonstrating production readiness...",
-    "Practice architectural system design, data modeling, and performance optimization..."
+  "experience_summary": "Experience highlights documented professional roles and technical tasks...",
+  "education_summary": "Education: B.S. in Computer Science, State University, 2019...",
+  "project_summary": "Technical projects effectively showcase practical software development...",
+  "recommendations": [
+    "Tailor resume summary and bullet points to emphasize Senior Backend Engineer keywords.",
+    "Prioritize incorporating missing technical skills: Redis, Linux, CI/CD.",
+    "Use the Google XYZ resume formula: Accomplished [X] as measured by [Y], by doing [Z]."
   ],
-  "created_at": "2026-09-15T05:10:00Z",
-  "updated_at": "2026-09-15T05:10:00Z"
+  "created_at": "2026-09-15T06:15:00Z"
 }
 ```
 
@@ -122,6 +122,7 @@ Configure backend settings via environment variables (or `.env` in `backend/`):
 | `DEBUG` | `True` | Django debug mode |
 | `SECRET_KEY` | Development key | Django cryptographic secret |
 | `ALLOWED_HOSTS` | `localhost,127.0.0.1` | Allowed HTTP hosts |
+| `MAX_UPLOAD_SIZE` | `5242880` (5MB) | Maximum file upload size in bytes |
 | `LLM_PROVIDER` | `mock` | AI provider: `mock`, `gemini`, or `openai` |
 | `LLM_API_KEY` | *(empty)* | API key for configured provider (or `GEMINI_API_KEY` / `OPENAI_API_KEY`) |
 
@@ -151,7 +152,7 @@ python manage.py migrate
 
 # Run system checks and automated tests
 python manage.py check
-python manage.py test accounts career
+python manage.py test accounts career resumes
 
 # Launch Django development server
 python manage.py runserver
